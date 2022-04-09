@@ -25,7 +25,7 @@ class DataManager {
 
     static async start() {
         console.log('Starting DataManager...');
-        this.db = new Level('./data/data.db', { valueEncoding: 'json' });
+        this.db = new Level('./data/history.db', { valueEncoding: 'json' });
         process.send('ready');
 
         process.on('message', async msg => {
@@ -44,6 +44,12 @@ class DataManager {
 }
 
 DataManager.start();
+
+process.on('SIGINT', async (sig) => {
+    console.log('DataManager Received ' + sig);
+    await DataManager.stop();
+    process.exit();
+});
 
 module.exports = {
     DataManager,

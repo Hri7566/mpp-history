@@ -43,35 +43,32 @@ class Server {
     }
 
     static async stop() {
-        console.log('Stopping server');
-        await this.stopDataManager();
+        console.log('Stopping server...');
     }
 
     static async startDataManager() {
-        this.dataManager = fork(resolve(join(__dirname, 'DataManager', 'DataManager.js')));
+        this.dataManager = fork(resolve(join(__dirname, 'DataManager', 'DataManager.js')), {
+            silent: false
+        });
 
         this.dataManager.on('message', msg => {
             console.log(`message from child: ${msg}`);
             if (msg == 'ready') {
                 console.log('DataManager ready');
-            } else if (msg == 'stopped') {
-                console.log('DataManager stopped');
-                this.dataManager.kill();
+            // } else if (msg == 'stopped') {
+            //     console.log('DataManager stopped');
+            //     this.dataManager.kill();
             }
         });
-    }
-
-    static async stopDataManager() {
-        console.log(`Sending stop to DataManager`);
-        this.dataManager.send('stop');
     }
 }
 
 Server.start();
 
-process.on('SIGINT', sig => {
+process.on('SIGINT', async sig => {
     console.log(`Received ${sig}`);
-    Server.stop();
+    await Server.stop();
+    process.exit();
 });
 
 module.exports = {
