@@ -5,6 +5,7 @@
   "author": "Hri7566",
   "license": "MIT",
   "dependencies": {
+    "dotenv": "^16.0.0",
     "express": "^4.17.3",
     "level": "^8.0.0",
     "node-ipc": "10.1.0",
