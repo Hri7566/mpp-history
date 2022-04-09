@@ -9,6 +9,7 @@
  * - cl: client
  * - sig: signal
  * - msg: JSON message (from MPP client or possibly Discord)
+ * - mph: MPP History
  */
 
 /**
