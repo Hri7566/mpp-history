@@ -1,5 +1,5 @@
 const { Level } = require('level');
-
+const { Logger } = require('../shared/Logger');
 const SuperKeys = require('./SuperKeys');
 
 class User {
@@ -47,6 +47,8 @@ class User {
 }
 
 class DataManager {
+    static logger = new Logger('Data', '\x1b[34m');
+
     // Handle every data request here
     static userDataDB;
     static keys = new Map();
@@ -55,7 +57,7 @@ class DataManager {
      * Initialize the data manager
      */
     static async start() {
-        console.log('Starting DataManager...');
+        this.logger.log('Starting DataManager...');
         this.userDataDB = new Level('./data/history.db', { valueEncoding: 'json' });
         await this.setDefaultData();
         process.send('ready');
@@ -65,7 +67,7 @@ class DataManager {
      * Stop the data manager
      */
     static async stop() {
-        console.log('Stopping DataManager...');
+        this.logger.log('Stopping DataManager...');
         await this.userDataDB.close();
         process.send('stopped');
     }
@@ -78,7 +80,7 @@ class DataManager {
     static putSetting(subkey, val) {
         return new Promise((resolve, reject) => {
             this.userDataDB.put(SuperKeys['settings'] + subkey, val, (err) => {
-                if (err) reject(err);
+                if (err) resolve(err);
                 else resolve();
             });
         });
@@ -88,7 +90,7 @@ class DataManager {
         return new Promise((resolve, reject) => {
             this.userDataDB.get(SuperKeys['settings'] + subkey, (err, val) => {
                 if (err) resolve(err);
-                else resolve(null, val);
+                else resolve(undefined, val);
             });
         });
     }
@@ -96,8 +98,8 @@ class DataManager {
     static settingExists(subkey) {
         return new Promise((resolve, reject) => {
             this.userDataDB.get(SuperKeys['settings'] + subkey, (err, val) => {
-                if (err) reject(err);
-                else resolve(val);
+                if (err) resolve(err);
+                else resolve(undefined, val);
             });
         });
     }
@@ -106,7 +108,6 @@ class DataManager {
 DataManager.start();
 
 process.on('SIGINT', async (sig) => {
-    console.log('DataManager Received ' + sig);
     await DataManager.stop();
     process.exit();
 });

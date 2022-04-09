@@ -25,6 +25,7 @@ const { WebRequestServer } = require('./WebRequestServer');
  */
 const { fork } = require('child_process');
 const { resolve, join } = require('path');
+const { Logger } = require('./shared/Logger');
 
 /**
  * Module-level declarations
@@ -32,6 +33,9 @@ const { resolve, join } = require('path');
 
 class Server {
     static dataManager;
+    static clientManager;
+    static apiManger;
+    static logger = new Logger('Server', '\x1b[36m');
 
     /**
      * Initialize the server
@@ -49,6 +53,8 @@ class Server {
 ╚═════════════════════════════════════════════════════════════════════════════════════╝\x1b[0m
 `);
         await this.startDataManager();
+        await this.startAPIManager();
+        await this.startClientManager();
         // TODO move this to API folder
         await WebRequestServer.start();
     }
@@ -57,7 +63,7 @@ class Server {
      * Stop the server
      */
     static async stop() {
-        console.log('Stopping server...');
+        this.logger.log('Stopping server...');
     }
 
     /**
@@ -70,7 +76,31 @@ class Server {
 
         this.dataManager.on('message', msg => {
             if (msg == 'ready') {
-                console.log('DataManager child ready');
+                this.logger.log('DataManager child ready');
+            }
+        });
+    }
+
+    static async startClientManager() {
+        this.clientManager = fork(resolve(join(__dirname, 'ClientManager', 'ClientManager.js')), {
+            silent: false
+        });
+
+        this.clientManager.on('message', msg => {
+            if (msg == 'ready') {
+                this.logger.log('ClientManager child ready');
+            }
+        });
+    }
+
+    static async startAPIManager() {
+        this.apiManger = fork(resolve(join(__dirname, 'APIManager', 'APIManager.js')), {
+            silent: false
+        });
+
+        this.apiManger.on('message', msg => {
+            if (msg == 'ready') {
+                this.logger.log('APIManager child ready');
             }
         });
     }
@@ -81,7 +111,6 @@ Server.start();
 
 process.on('SIGINT', async sig => {
     // Handle quit signal (Ctrl + C)
-    console.log(`Received ${sig}`);
     await Server.stop();
     process.exit();
 });
