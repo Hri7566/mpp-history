@@ -1,5 +1,7 @@
 const { Logger } = require('../shared/Logger');
 
+const { WebRequestServer } = require('./WebRequestServer');
+
 class APIManager {
     // TODO API manager
 
@@ -10,6 +12,7 @@ class APIManager {
      */
     static async start() {
         this.logger.log('Starting API manager...');
+        await WebRequestServer.start();
         process.send('ready');
     }
 

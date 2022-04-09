@@ -18,8 +18,6 @@
  * TODO logging types
  */
 
-const { WebRequestServer } = require('./WebRequestServer');
-
 /**
  * Module imports
  */
@@ -55,8 +53,6 @@ class Server {
         await this.startDataManager();
         await this.startAPIManager();
         await this.startClientManager();
-        // TODO move this to API folder
-        await WebRequestServer.start();
     }
 
     /**

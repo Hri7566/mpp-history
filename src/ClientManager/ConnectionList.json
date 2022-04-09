@@ -2,7 +2,7 @@
     "wss://mppclone.com:8443": [
         {
             "_id": "✧𝓓𝓔𝓥 𝓡𝓸𝓸𝓶✧",
-            "type": "stay"
+            "custom_messages": true
         }
     ]
 }
