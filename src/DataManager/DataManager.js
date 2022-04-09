@@ -1,9 +1,8 @@
 const { Level } = require('level');
 
+const SuperKeys = require('./SuperKeys');
+
 class User {
-    // Key for user data
-    static keyBase = "user~";
-    
     constructor(p) {
         //! must be JSON-compatible 24/7
         if (!User.isParticipant(p)) return;
@@ -50,6 +49,7 @@ class User {
 class DataManager {
     // Handle every data request here
     static userDataDB;
+    static keys = new Map();
 
     /**
      * Initialize the data manager
@@ -57,6 +57,7 @@ class DataManager {
     static async start() {
         console.log('Starting DataManager...');
         this.userDataDB = new Level('./data/history.db', { valueEncoding: 'json' });
+        await this.setDefaultData();
         process.send('ready');
     }
     
@@ -67,6 +68,38 @@ class DataManager {
         console.log('Stopping DataManager...');
         await this.userDataDB.close();
         process.send('stopped');
+    }
+
+    static async setDefaultData() {
+        if (await this.getSetting('init') == 1) return;
+        await this.putSetting('init', 1);
+    }
+
+    static putSetting(subkey, val) {
+        return new Promise((resolve, reject) => {
+            this.userDataDB.put(SuperKeys['settings'] + subkey, val, (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    }
+
+    static getSetting(subkey) {
+        return new Promise((resolve, reject) => {
+            this.userDataDB.get(SuperKeys['settings'] + subkey, (err, val) => {
+                if (err) resolve(err);
+                else resolve(null, val);
+            });
+        });
+    }
+
+    static settingExists(subkey) {
+        return new Promise((resolve, reject) => {
+            this.userDataDB.get(SuperKeys['settings'] + subkey, (err, val) => {
+                if (err) reject(err);
+                else resolve(val);
+            });
+        });
     }
 }
 

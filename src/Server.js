@@ -39,8 +39,7 @@ class Server {
     static async start() {
         // Print logo
         // Do not change the spacing
-        console.log(`
-\x1b[31m╔═════════════════════════════════════════════════════════════════════════════════════╗
+        process.stdout.write(`\x1b[31m╔═════════════════════════════════════════════════════════════════════════════════════╗
 ║\x1b[36m███╗   ███╗██████╗ ██████╗     ██╗  ██╗██╗███████╗████████╗ ██████╗ ██████╗ ██╗   ██╗\x1b[31m║
 ║\x1b[36m████╗ ████║██╔══██╗██╔══██╗    ██║  ██║██║██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗╚██╗ ██╔╝\x1b[31m║
 ║\x1b[36m██╔████╔██║██████╔╝██████╔╝    ███████║██║███████╗   ██║   ██║   ██║██████╔╝ ╚████╔╝ \x1b[31m║
@@ -50,6 +49,7 @@ class Server {
 ╚═════════════════════════════════════════════════════════════════════════════════════╝\x1b[0m
 `);
         await this.startDataManager();
+        // TODO move this to API folder
         await WebRequestServer.start();
     }
 
@@ -69,12 +69,8 @@ class Server {
         });
 
         this.dataManager.on('message', msg => {
-            console.log(`message from child: ${msg}`);
             if (msg == 'ready') {
-                console.log('DataManager ready');
-            // } else if (msg == 'stopped') {
-            //     console.log('DataManager stopped');
-            //     this.dataManager.kill();
+                console.log('DataManager child ready');
             }
         });
     }
