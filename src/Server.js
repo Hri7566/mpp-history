@@ -8,7 +8,7 @@
  * - u: user
  * - cl: client
  * - sig: signal
- * - msg: JSON message (from MPP client or possibly Discord)
+ * - msg: JSON/client message
  * - mph: MPP History
  */
 
@@ -24,6 +24,7 @@
 const { fork } = require('child_process');
 const { resolve, join } = require('path');
 const { Logger } = require('./shared/Logger');
+const { EventEmitter } = require('events');
 
 /**
  * Module-level declarations
@@ -34,6 +35,11 @@ class Server {
     static clientManager;
     static apiManger;
     static logger = new Logger('Server', '\x1b[36m');
+
+    static on = EventEmitter.prototype.on;
+    static off = EventEmitter.prototype.off;
+    static emit = EventEmitter.prototype.emit;
+    static once = EventEmitter.prototype.once;
 
     /**
      * Initialize the server
@@ -50,6 +56,8 @@ class Server {
 ║\x1b[36m╚═╝     ╚═╝╚═╝     ╚═╝         ╚═╝  ╚═╝╚═╝╚══════╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝   ╚═╝   \x1b[31m║
 ╚═════════════════════════════════════════════════════════════════════════════════════╝\x1b[0m
 `);
+
+        await this.bindListeners();
         await this.startDataManager();
         await this.startAPIManager();
         await this.startClientManager();
@@ -71,12 +79,19 @@ class Server {
         });
 
         this.dataManager.on('message', msg => {
-            if (msg == 'ready') {
-                this.logger.log('DataManager child ready');
+            try {
+                msg = JSON.parse(msg);
+                msg.from = 'data';
+                this.emit(msg.m, msg);
+            } catch (err) {
+                this.logger.error(err);
             }
         });
     }
 
+    /**
+     * Start the client manager process
+     */
     static async startClientManager() {
         this.clientManager = fork(resolve(join(__dirname, 'ClientManager', 'ClientManager.js')), {
             silent: false
@@ -85,10 +100,14 @@ class Server {
         this.clientManager.on('message', msg => {
             if (msg == 'ready') {
                 this.logger.log('ClientManager child ready');
+                this.clientManager.send('test');
             }
         });
     }
 
+    /**
+     * Start the API manager process
+     */
     static async startAPIManager() {
         this.apiManger = fork(resolve(join(__dirname, 'APIManager', 'APIManager.js')), {
             silent: false
@@ -97,6 +116,19 @@ class Server {
         this.apiManger.on('message', msg => {
             if (msg == 'ready') {
                 this.logger.log('APIManager child ready');
+            }
+        });
+    }
+
+    /**
+     * Bind default event listeners
+     */
+    static async bindListeners() {
+        this.on('ready', msg => {
+            switch (msg.type) {
+                case 'data':
+                    this.logger.log('DataManager child ready');
+                    break;
             }
         });
     }

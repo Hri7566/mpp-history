@@ -120,7 +120,9 @@ class DataManager {
         this.logger.log('Starting DataManager...');
         this.db = new Level('./data/history.db', { valueEncoding: 'json' });
         await this.setDefaultData();
-        process.send('ready');
+        this.sendMessage({
+            m: 'ready'
+        });
     }
     
     /**
@@ -130,6 +132,10 @@ class DataManager {
         this.logger.log('Stopping DataManager...');
         await this.db.close();
         process.send('stopped');
+    }
+
+    static async sendMessage(msg) {
+        process.send(JSON.stringify(msg));
     }
 
     static async setDefaultData() {
@@ -192,5 +198,5 @@ process.on('SIGINT', async (sig) => {
 
 module.exports = {
     DataManager,
-    User
+    HistoryUser
 }
