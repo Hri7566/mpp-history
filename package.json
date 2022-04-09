@@ -1,0 +1,13 @@
+{
+  "name": "mpp-history",
+  "version": "1.0.0",
+  "main": "src/Server.js",
+  "author": "Hri7566",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.3",
+    "level": "^8.0.0",
+    "node-ipc": "10.1.0",
+    "ws": "^8.5.0"
+  }
+}
