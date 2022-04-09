@@ -1,14 +1,17 @@
 const { Level } = require('level');
 
 class User {
-    //! must be JSON-compatible 24/7
+    // Key for user data
     static keyBase = "user~";
     
     constructor(p) {
-        // check if p is a participant
-        this.latestParticipant = p;
+        //! must be JSON-compatible 24/7
+        if (!User.isParticipant(p)) return;
         this.participantHistory = [p];
+        this.latestUpdate = Date.now();
     }
+
+    // Methods are static because they can't be saved in JSON
 
     static isParticipant(p) {
         if (!('_id' in p) || !('name' in p)) return false
@@ -17,28 +20,52 @@ class User {
         }
         return true;
     }
+
+    static isUser(u) {
+        if (!("participantHistory" in u)) return false;
+        return true;
+    }
+
+    /**
+     * Get a user's latest participant object
+     * @param {User} u User to get data from
+     * @returns {*} Participant data
+     */
+    static getLatestParticipant(u) {
+        if (!('participantHistory' in u)) return null;
+        return u.participantHistory[u.participantHistory.length - 1];
+    }
+
+    /**
+     * Update a user's participant history
+     * @param {User} u User to update
+     * @param {*} p Participant data to append
+     */
+    static updateUser(u, p) {
+        u.latestUpdate = Date.now();
+        u.participantHistory.push(p);
+    }
 }
 
 class DataManager {
-    // handle all data requests here
-    static db;
+    // Handle every data request here
+    static userDataDB;
 
+    /**
+     * Initialize the data manager
+     */
     static async start() {
         console.log('Starting DataManager...');
-        this.db = new Level('./data/history.db', { valueEncoding: 'json' });
+        this.userDataDB = new Level('./data/history.db', { valueEncoding: 'json' });
         process.send('ready');
-
-        process.on('message', async msg => {
-            console.log('parent of data: ' + msg);
-            if (msg == 'stop') {
-                await this.stop();
-            }
-        });
     }
     
+    /**
+     * Stop the data manager
+     */
     static async stop() {
         console.log('Stopping DataManager...');
-        await this.db.close();
+        await this.userDataDB.close();
         process.send('stopped');
     }
 }
