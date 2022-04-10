@@ -61,6 +61,9 @@ class Server {
         await this.startDataManager();
         await this.startAPIManager();
         await this.startClientManager();
+        await this.startCommandManager();
+
+        this.logger.log('Server started.');
     }
 
     /**
@@ -82,6 +85,7 @@ class Server {
             try {
                 msg = JSON.parse(msg);
                 msg.from = 'data';
+                msg.t = Date.now();
                 this.emit(msg.m, msg);
             } catch (err) {
                 this.logger.error(err);
@@ -98,9 +102,12 @@ class Server {
         });
 
         this.clientManager.on('message', msg => {
-            if (msg == 'ready') {
-                this.logger.log('ClientManager child ready');
-                this.clientManager.send('test');
+            try {
+                msg = JSON.parse(msg);
+                msg.from = 'client';
+                this.emit(msg.m, msg);
+            } catch (err) {
+                this.logger.error(err);
             }
         });
     }
@@ -114,8 +121,31 @@ class Server {
         });
 
         this.apiManger.on('message', msg => {
-            if (msg == 'ready') {
-                this.logger.log('APIManager child ready');
+            try {
+                msg = JSON.parse(msg);
+                msg.from = 'api';
+                this.emit(msg.m, msg);
+            } catch (err) {
+                this.logger.error(err);
+            }
+        });
+    }
+
+    /**
+     * Start the command manager process
+     */
+    static async startCommandManager() {
+        this.commandManager = fork(resolve(join(__dirname, 'CommandManager', 'CommandManager.js')), {
+            silent: false
+        });
+
+        this.commandManager.on('message', msg => {
+            try {
+                msg = JSON.parse(msg);
+                msg.from = 'cmd';
+                this.emit(msg.m, msg);
+            } catch (err) {
+                this.logger.error(err);
             }
         });
     }
@@ -125,11 +155,40 @@ class Server {
      */
     static async bindListeners() {
         this.on('ready', msg => {
-            switch (msg.type) {
+            switch (msg.from) {
                 case 'data':
                     this.logger.log('DataManager child ready');
                     break;
+                case 'cmd':
+                    this.logger.log('CommandManager child ready');
+                    break;
+                case 'api':
+                    this.logger.log('APIManager child ready');
+                    break;
+                case 'client':
+                    this.logger.log('ClientManager child ready');
+                    break;
             }
+        });
+
+        this.on('client command', msg => {
+            let m = {
+                m: 'client command',
+                msg: msg,
+                from: 'server',
+                t: Date.now(),
+            };
+            this.commandManager.send(JSON.stringify(m));
+        });
+
+        this.on('client command response', msg => {
+            let m = {
+                m: 'client command response',
+                msg: msg,
+                from: 'server',
+                t: Date.now(),
+            };
+            this.clientManager.send(JSON.stringify(m));
         });
     }
 }

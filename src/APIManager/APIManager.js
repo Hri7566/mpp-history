@@ -13,7 +13,9 @@ class APIManager {
     static async start() {
         this.logger.log('Starting API manager...');
         await WebRequestServer.start();
-        process.send('ready');
+        this.sendMessage({
+            m: 'ready'
+        });
     }
 
     /**
@@ -22,6 +24,14 @@ class APIManager {
     static async stop() {
         this.logger.log('Stopping API manager...');
     }
+
+    /**
+     * Send a message to the server
+     * @param {object} msg Message object
+     */
+    static sendMessage(msg) {
+        process.send(JSON.stringify(msg));
+    }
 }
 
 APIManager.start();
@@ -29,6 +39,10 @@ APIManager.start();
 process.on('SIGINT', async (sig) => {
     await APIManager.stop();
     process.exit();
+});
+
+process.on('message', async (msg) => {
+    await APIManager.receiveServerMessage(msg);
 });
 
 module.exports = {

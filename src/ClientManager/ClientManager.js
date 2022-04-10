@@ -2,13 +2,13 @@ require('dotenv').config();
 
 const { Logger } = require('../shared/Logger');
 const { Prefix } = require('./Prefix');
-const { CommandHandler } = require('../shared/CommandHandler');
 const Client = require('./Client');
+const { ClientIdentifier } = require('../shared/ClientIdentifier');
 
 const MPH_MPPCLONE_TOKEN = process.env.MPH_MPPCLONE_TOKEN;
 
 class ClientManager {
-    static logger = new Logger('ClientManager', '\x1b[34m');
+    static logger = new Logger('Clients', '\x1b[34m');
 
     static clients = [];
 
@@ -18,7 +18,9 @@ class ClientManager {
     static async start() {
         this.logger.log('Starting client manager...');
         await this.initClients();
-        process.send('ready');
+        this.sendMessage({
+            m: 'ready'
+        });
     }
 
     /**
@@ -26,6 +28,10 @@ class ClientManager {
      */
     static async stop() {
         this.logger.log('Stopping client manager...');
+    }
+
+    static sendMessage(msg) {
+        process.send(JSON.stringify(msg));
     }
 
     static async initClients() {
@@ -74,13 +80,27 @@ class ClientManager {
         
         if (msg.cmd == "") return;
 
-        let m = await CommandHandler.handleMessage(msg, cl, 'mpp');
-        if (m !== "" && m !== undefined) {
-            cl.sendArray([{
-                m: 'a',
-                message: m,
-                channel: msg.channel
-            }]);
+        process.send(JSON.stringify({
+            m: 'client command',
+            msg: msg,
+            cl: ClientIdentifier.stringify(cl)
+        }));
+
+        // TODO do this after receiving a message from the server
+        // if (m !== "" && m !== undefined) {
+        //     cl.sendArray([{
+        //         m: 'a',
+        //         message: m,
+        //         channel: msg.channel
+        //     }]);
+        // }
+    }
+
+    static async receiveServerMessage(msg) {
+        try {
+            msg = JSON.parse(msg);
+        } catch (err) {
+
         }
     }
 }
@@ -90,6 +110,10 @@ ClientManager.start();
 process.on('SIGINT', async (sig) => {
     await ClientManager.stop();
     process.exit();
+});
+
+process.on('message', async (msg) => {
+    await ClientManager.receiveServerMessage(msg);
 });
 
 module.exports = {

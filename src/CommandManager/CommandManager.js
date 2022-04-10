@@ -1,3 +1,6 @@
+const { Logger } = require('../shared/Logger');
+const { EventEmitter } = require('events');
+
 class Command {
     static commands = {};
 
@@ -16,7 +19,46 @@ class Command {
     }
 }
 
-class CommandHandler {
+class CommandManager {
+    static logger = new Logger('Commands', '\x1b[34m');
+
+    static on = EventEmitter.prototype.on;
+    static off = EventEmitter.prototype.off;
+    static once = EventEmitter.prototype.once;
+    static emit = EventEmitter.prototype.emit;
+
+    static start() {
+        this.logger.log('Starting command manager...');
+        this.bindEvents();
+        this.sendMessage({
+            m: 'ready'
+        });
+    }
+
+    static stop() {
+        this.logger.log('Stopping command manager...');
+    }
+
+    static sendMessage(msg) {
+        process.send(JSON.stringify(msg));
+    }
+
+    static async receiveServerMessage(msg) {
+        try {
+            msg = JSON.parse(msg);
+            this.emit(msg.m, msg);
+        } catch (err) {
+            this.logger.error(err);
+        }
+    }
+
+    static async bindEvents() {
+        this.on('client command', msg => {
+            this.logger.log('Received client command...');
+            console.log(msg);
+        });
+    }
+
     static async handleMessage(msg, cl, platform) {
         cmdLoop:
         for (let cmd of Object.values(Command.commands)) {
@@ -39,6 +81,17 @@ class CommandHandler {
     }
 }
 
+CommandManager.start();
+
+process.on('SIGINT', async (sig) => {
+    await CommandManager.stop();
+    process.exit();
+});
+
+process.on('message', async (msg) => {
+    await CommandManager.receiveServerMessage(msg);
+});
+
 Command.addCommand(new Command('help', ['help', 'h', 'cmds'], '%Phelp', 'Displays all commands', async (msg, cl, platform) => {
     let list = "Commands:";
 
@@ -56,6 +109,6 @@ Command.addCommand(new Command('help', ['help', 'h', 'cmds'], '%Phelp', 'Display
 }));
 
 module.exports = {
-    CommandHandler,
+    CommandManager,
     Command
 }
