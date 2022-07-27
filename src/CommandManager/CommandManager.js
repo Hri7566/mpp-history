@@ -4,18 +4,44 @@ const { EventEmitter } = require('events');
 class Command {
     static commands = {};
 
-    constructor(id, acc, usage, desc, cb, permNode, dependent) {
+    constructor(id, acc, usage, desc, cb, permNode, flags, dependent) {
         this.id = id;
         this.acc = acc;
         this.usage = usage;
         this.desc = desc;
         this.cb = cb;
-        this.permNode = permNode;
+        this.permNode = permNode || 'user.command';
+        this.flags = flags || {};
         this.dependent = dependent || 'independent';
     }
 
     static addCommand(cmd) {
         this.commands[cmd.id] = cmd;
+    }
+
+    static removeCommand(cmd) {
+        for (let k of Object.keys(this.commands)) {
+            if (this.commands[k] == cmd) {
+                delete this.commands[k];
+            }
+        }
+    }
+
+    static removeCommandFuzzy(str) {
+        let found_cmd;
+
+        mainLoop:
+        for (let cmd of Object.values(this.commands)) {
+            accLoop:
+            for (let a of cmd.acc) {
+                if (a.toLowerCase().includes(str.toLowerCase())) {
+                    found_cmd = cmd;
+                    break mainLoop;
+                }
+            }
+        }
+
+        this.removeCommand(found_cmd);
     }
 }
 
@@ -68,6 +94,10 @@ class CommandManager {
                 }
             }
         });
+
+        this.on('add command', msg => {
+            Command.addCommand(msg.command);
+        });
     }
 
     static async handleMessage(msg, platform) {
@@ -118,6 +148,10 @@ Command.addCommand(new Command('help', ['help', 'h', 'cmds'], '%Phelp', 'Display
 
     return list;
 }));
+
+Command.addCommand(new Command('about', ['about', 'a'], '%Pabout', 'Returns information about this bot', async (msg, platform) => {
+    return `This bot will eventually be used to search user data more thoroughly than Theta. MPP History - by Hri7566 (not to be confused with JPDLD's Bot)`;
+}))
 
 module.exports = {
     CommandManager,
