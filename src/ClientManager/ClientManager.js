@@ -19,7 +19,7 @@ const MPH_MPPCLONE_TOKEN = process.env.MPH_MPPCLONE_TOKEN;
  * ANCHOR Module-level imports
  */
 
-const usersetInitializationVector = require('./usersetInitializationVector');
+const UsersetInitializationVector = require('./UsersetInitializationVector');
 
 /**
  * ANCHOR Module-level declarations
@@ -28,6 +28,11 @@ const usersetInitializationVector = require('./usersetInitializationVector');
 class ClientManager {
     static logger = new Logger('Clients', '\x1b[34m');
 
+    static on = EventEmitter.prototype.on;
+    static off = EventEmitter.prototype.off;
+    static once = EventEmitter.prototype.once;
+    static emit = EventEmitter.prototype.emit;
+
     static clients = [];
 
     /**
@@ -35,6 +40,7 @@ class ClientManager {
      */
     static async start() {
         this.logger.log('Starting client manager...');
+        this.bindEvents();
         await this.initializeClients();
         this.sendMessage({
             m: 'ready'
@@ -61,12 +67,31 @@ class ClientManager {
 
                 client.start();
                 client.setChannel(ch._id);
-                client.currentUserset = usersetInitializationVector;
+                client.currentUserset = UsersetInitializationVector;
 
                 this.bindClientListeners(client, ch);
                 this.clients.push(client);
             }
         }
+    }
+
+    static bindEvents() {
+        this.on('client command response', msg => {
+            let cl_reference_id = msg.msg.cl;
+            let cl;
+            
+            for (let c of this.clients) {
+                if (c.identifier = cl_reference_id) {
+                    cl = c;
+                }
+            }
+
+            if (!cl) return;
+
+            if (msg.msg.out) {
+                this.sendBufferedChatMessage(cl, msg.msg.out);
+            }
+        });
     }
 
     static async bindClientListeners(cl, settings) {
@@ -78,6 +103,10 @@ class ClientManager {
                 cl.sendArray([{
                     m: '+custom'
                 }]);
+
+                cl.canUseCustom = true;
+            } else {
+                cl.canUseCustom = false;
             }
         });
 
@@ -101,7 +130,7 @@ class ClientManager {
             cl.sendArray([{
                 m: 'userset', set
             }]);
-        })
+        });
     }
 
     static async handleChatMessage(msg, cl) {
@@ -123,10 +152,13 @@ class ClientManager {
         
         if (msg.cmd == "") return;
 
+        cl.identifier = ClientIdentifier.stringify(cl);
+
         process.send(JSON.stringify({
             m: 'client command',
             msg: msg,
-            cl: ClientIdentifier.stringify(cl)
+            cl: ClientIdentifier.stringify(cl),
+            platform: 'mpp'
         }));
 
         // TODO do this after receiving a message from the server
@@ -142,6 +174,7 @@ class ClientManager {
     static async receiveServerMessage(msg) {
         try {
             msg = JSON.parse(msg);
+            this.emit(msg.m, msg);
         } catch (err) {
 
         }
@@ -149,6 +182,47 @@ class ClientManager {
 
     static async stopClient(cl) {
         cl.stop();
+    }
+
+    static sendBufferedChatMessage(cl, message) {
+        if (!cl.chatBuffer) {
+            cl.chatBuffer = [];
+
+            cl.chatBufferInterval = setInterval(() => {
+                if (cl.chatBuffer.length > 0) {
+                    this.sendChatMessage(cl, cl.chatBuffer.splice(0, 1));
+                }
+            }, 1000);
+        }
+
+        cl.chatBuffer.push(message);
+    }
+
+    static sendChatMessage(cl, message) {
+        cl.sendArray([{
+            m: 'a',
+            message: `\u034f${message}`
+        }])
+    }
+
+    static sendCustomMessage(cl, payload, target = { mode: 'subscribed', global: true }) {
+        if (cl.canUseCustom) {
+            cl.sendArray([{
+                m: 'custom',
+                data: payload,
+                target: target
+            }]);
+        } else {
+            cl.sendArray([{
+                m: 'n',
+                t: Date.now(),
+                n: [{
+                    m: 'custom',
+                    data: payload,
+                    target: target
+                }]
+            }]);
+        }
     }
 }
 

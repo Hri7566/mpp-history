@@ -176,8 +176,9 @@ class Server {
                 m: 'client command',
                 msg: msg,
                 from: 'server',
-                t: Date.now(),
+                t: Date.now()
             };
+
             this.commandManager.send(JSON.stringify(m));
         });
 
@@ -186,8 +187,9 @@ class Server {
                 m: 'client command response',
                 msg: msg,
                 from: 'server',
-                t: Date.now(),
+                t: Date.now()
             };
+
             this.clientManager.send(JSON.stringify(m));
         });
     }

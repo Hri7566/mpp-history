@@ -53,13 +53,24 @@ class CommandManager {
     }
 
     static async bindEvents() {
-        this.on('client command', msg => {
+        this.on('client command', async msg => {
             this.logger.log('Received client command...');
-            console.log(msg);
+            let out = await this.handleMessage(msg.msg.msg);
+
+            if (typeof out == 'string') {
+                if (out !== '') {
+                    this.sendMessage({
+                        m: 'client command response',
+                        cl: msg.msg.cl,
+                        original_message: msg,
+                        out: out
+                    });
+                }
+            }
         });
     }
 
-    static async handleMessage(msg, cl, platform) {
+    static async handleMessage(msg, platform) {
         cmdLoop:
         for (let cmd of Object.values(Command.commands)) {
             if (cmd.dependent !== 'independent') {
@@ -76,7 +87,7 @@ class CommandManager {
 
             // TODO permissions
 
-            return await cmd.cb(msg, platform, cl);
+            return await cmd.cb(msg);
         }
     }
 }
@@ -92,7 +103,7 @@ process.on('message', async (msg) => {
     await CommandManager.receiveServerMessage(msg);
 });
 
-Command.addCommand(new Command('help', ['help', 'h', 'cmds'], '%Phelp', 'Displays all commands', async (msg, cl, platform) => {
+Command.addCommand(new Command('help', ['help', 'h', 'cmds'], '%Phelp', 'Displays all commands', async (msg, platform) => {
     let list = "Commands:";
 
     for (let cmd of Object.values(Command.commands)) {
