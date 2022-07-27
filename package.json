@@ -4,6 +4,9 @@
   "main": "src/Server.js",
   "author": "Hri7566",
   "license": "MIT",
+  "scripts": {
+    "start": "node ."
+  },
   "dependencies": {
     "dotenv": "^16.0.0",
     "express": "^4.17.3",

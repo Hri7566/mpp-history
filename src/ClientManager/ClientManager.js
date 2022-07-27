@@ -1,11 +1,29 @@
 require('dotenv').config();
 
+/**
+ * ANCHOR Global module imports
+ */
+
 const { Logger } = require('../shared/Logger');
 const { Prefix } = require('./Prefix');
 const Client = require('./Client');
 const { ClientIdentifier } = require('../shared/ClientIdentifier');
 
+/**
+ * ANCHOR Environment Variables
+ */
+
 const MPH_MPPCLONE_TOKEN = process.env.MPH_MPPCLONE_TOKEN;
+
+/**
+ * ANCHOR Module-level imports
+ */
+
+const usersetInitializationVector = require('./usersetInitializationVector');
+
+/**
+ * ANCHOR Module-level declarations
+ */
 
 class ClientManager {
     static logger = new Logger('Clients', '\x1b[34m');
@@ -17,7 +35,7 @@ class ClientManager {
      */
     static async start() {
         this.logger.log('Starting client manager...');
-        await this.initClients();
+        await this.initializeClients();
         this.sendMessage({
             m: 'ready'
         });
@@ -34,14 +52,17 @@ class ClientManager {
         process.send(JSON.stringify(msg));
     }
 
-    static async initClients() {
+    static async initializeClients() {
         let connections = require('./ConnectionList');
 
         for (let uri of Object.keys(connections)) {
             for (let ch of connections[uri]) {
                 let client = new Client(uri, MPH_MPPCLONE_TOKEN);
+
                 client.start();
                 client.setChannel(ch._id);
+                client.currentUserset = usersetInitializationVector;
+
                 this.bindClientListeners(client, ch);
                 this.clients.push(client);
             }
@@ -64,9 +85,31 @@ class ClientManager {
         cl.on('a', msg => {
             this.handleChatMessage(msg, cl);
         });
+
+        cl.on('ch', msg => {
+
+            cl.emit('send userset');
+
+            if (!cl['usersetInterval']) {
+                cl['usersetInterval'] = setInterval(() => {
+                    cl.emit('send userset');
+                }, 5 * 60 * 1000 /* 5 minutes */);
+            }
+        });
+
+        cl.on('send userset', (set = cl.currentUserset) => {
+            cl.sendArray([{
+                m: 'userset', set
+            }]);
+        })
     }
 
     static async handleChatMessage(msg, cl) {
+        if (!msg.message && !msg.a) return;
+        if (msg.message) msg.a = msg.message;
+
+        if (typeof msg.a !== 'string') return;
+
         msg.args = msg.a.split(' ');
 
         for (let p of Object.values(Prefix.prefixes)) {
@@ -102,6 +145,10 @@ class ClientManager {
         } catch (err) {
 
         }
+    }
+
+    static async stopClient(cl) {
+        cl.stop();
     }
 }
 
