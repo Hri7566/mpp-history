@@ -11,7 +11,7 @@ class Prefix {
     }
 }
 
-new Prefix('/');
+new Prefix('?');
 
 module.exports = {
     Prefix
