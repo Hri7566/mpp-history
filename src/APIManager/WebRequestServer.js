@@ -12,10 +12,22 @@ class WebRequestServer {
     }
 
     static listen() {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
+            await this.bindRequestEvents();
+
             this.app.listen(this.port, () => {
                 resolve();
             });
+        });
+    }
+
+    static async bindRequestEvents() {
+        this.app.get('/', (req, res) => {
+            res.send("hi").end();
+        });
+
+        this.app.get('/beans', (req, res) => {
+            res.send('beans').end();
         });
     }
 }
