@@ -177,20 +177,46 @@ class Server {
                 msg: msg,
                 from: 'server',
                 t: Date.now()
-            };
+            }
 
             this.commandManager.send(JSON.stringify(m));
         });
 
         this.on('client command response', msg => {
-            let m = {
-                m: 'client command response',
-                msg: msg,
-                from: 'server',
-                t: Date.now()
-            };
+            try {
+                let m = {
+                    m: 'client command response',
+                    msg: msg,
+                    from: 'server',
+                    t: Date.now()
+                }
+                
+                this.clientManager.send(JSON.stringify(m));
+            } catch (err) {}
+        });
 
-            this.clientManager.send(JSON.stringify(m));
+        this.on('client manager message', msg => {
+            try {
+                this.clientManager.send(JSON.stringify(msg.msg));
+            } catch (err) {}
+        });
+
+        this.on('data manager message', msg => {
+            try {
+                this.dataManager.send(JSON.stringify(msg.msg));
+            } catch (err) {}
+        });
+
+        this.on('api manager message', msg => {
+            try {
+                this.apiManger.send(JSON.stringify(msg.msg));
+            } catch (err) {}
+        });
+
+        this.on('command manager message', msg => {
+            try {
+                this.commandManager.send(JSON.stringify(msg.msg));
+            } catch (err) {}
         });
     }
 }
