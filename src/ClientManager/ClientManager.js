@@ -81,7 +81,7 @@ class ClientManager {
             let cl;
             
             for (let c of this.clients) {
-                if (c.identifier = cl_reference_id) {
+                if (c.identifier == cl_reference_id) {
                     cl = c;
                 }
             }
@@ -89,8 +89,28 @@ class ClientManager {
             if (!cl) return;
 
             if (msg.msg.out) {
+                msg.msg.out = msg.msg.out.match(/.{1,512}/);
                 this.sendBufferedChatMessage(cl, msg.msg.out);
             }
+        });
+
+        this.on('send chat', msg => {
+            this.sendBufferedChatMessage(msg.cl, msg.msg);
+        });
+
+        this.on('clear client chat buffer', msg => {
+            let cl_reference_id = msg.msg.cl;
+            let cl;
+
+            for (let c of this.clients) {
+                if (c.identifier == cl_reference_id) {
+                    cl = c;
+                }
+            }
+
+            if (!cl) return;
+
+            cl.chatBuffer = [];
         });
     }
 
@@ -186,16 +206,30 @@ class ClientManager {
 
     static sendBufferedChatMessage(cl, message) {
         if (!cl.chatBuffer) {
-            cl.chatBuffer = [];
-
-            cl.chatBufferInterval = setInterval(() => {
-                if (cl.chatBuffer.length > 0) {
-                    this.sendChatMessage(cl, cl.chatBuffer.splice(0, 1));
-                }
-            }, 1000);
+            this.resetChatBuffer(cl);
         }
 
         cl.chatBuffer.push(message);
+    }
+
+    static resetChatBuffer(cl) {
+        cl.chatBuffer = [];
+
+        if (cl.chatBufferInterval) {
+            clearInterval(cl.chatBufferInterval);
+        }
+
+        cl.chatBufferInterval = setInterval(() => {
+            if (cl.chatBuffer.length > 0) {
+                for (let i = 0; i < cl.chatBuffer.length; i++) {
+                    const str = cl.chatBuffer[i];
+                    let time = i > 4 ? i * 2000 : i * 1000;
+                    setTimeout(() => {
+                        this.sendChatMessage(cl, cl.chatBuffer.splice(0, 1));
+                    }, time);
+                }
+            }
+        });
     }
 
     static sendChatMessage(cl, message) {
