@@ -1,4 +1,6 @@
 const { Level } = require('level');
+const { EventEmitter } = require('events');
+
 const { Logger } = require('../shared/Logger');
 const SuperKeys = require('./SuperKeys');
 
@@ -112,6 +114,11 @@ class DataManager {
     // Handle every data request here
     static db;
     static keys = new Map();
+
+    static on = EventEmitter.prototype.on;
+    static off = EventEmitter.prototype.off;
+    static once = EventEmitter.prototype.once;
+    static emit = EventEmitter.prototype.emit;
 
     /**
      * Initialize the data manager
