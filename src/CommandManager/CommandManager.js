@@ -91,9 +91,8 @@ class CommandManager {
 
     static async bindEvents() {
         this.on('client command', async msg => {
-            this.logger.log('Received client command...');
-            let out = await this.handleMessage(msg.msg.msg);
-
+            let out = await this.handleMessage(msg.msg.msg, msg.msg.platform, msg.msg.cl, msg.msg);
+            
             if (typeof out == 'string') {
                 if (out !== '') {
                     this.sendMessage({
@@ -111,7 +110,7 @@ class CommandManager {
         });
     }
 
-    static async handleMessage(msg, platform) {
+    static async handleMessage(msg, platform, cl, orig) {
         cmdLoop:
         for (let cmd of Object.values(Command.commands)) {
             if (cmd.dependent !== 'independent') {
@@ -128,7 +127,7 @@ class CommandManager {
 
             // TODO permissions
 
-            return await cmd.cb(msg);
+            return await cmd.cb(msg, platform, cl, orig);
         }
     }
 }
@@ -201,7 +200,19 @@ Command.addCommand(new Command('color', ['color', 'c'], '%Pcolor [color]', 'Retu
     } else {
         return `Excuse me, I don't think '${msg.args[1]}' is a hex code. (Maybe you forgot '#'?)`;
     }
-}));
+}, 'user.command', {}));
+
+Command.addCommand(new Command('buffer', ['buffer', 'clearbuffer', 'clearchatbuffer', 'chatbuffer', 'cb'], '%Pbuffer', 'Clear the chat buffer', async (msg, platform, cl) => {
+    CommandManager.sendMessage({
+        m: 'client manager message',
+        msg: {
+            m: 'clear client chat buffer',
+            cl: cl
+        }
+    });
+
+    return `Cleared chat buffer.`;
+}, 'user.clearBuffer', {}, 'mpp'));
 
 module.exports = {
     CommandManager,
