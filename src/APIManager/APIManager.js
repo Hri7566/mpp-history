@@ -1,11 +1,23 @@
-const { Logger } = require('../shared/Logger');
+const { EventEmitter } = require('events');
 
+const { Logger } = require('../shared/Logger');
 const { WebRequestServer } = require('./WebRequestServer');
 
 class APIManager {
     // TODO API manager
 
+    /**
+     * Context logger
+     */
     static logger = new Logger('API', '\x1b[34m');
+
+    /**
+     * EventEmitter methods
+     */
+    static on = EventEmitter.prototype.on;
+    static off = EventEmitter.prototype.off;
+    static once = EventEmitter.prototype.once;
+    static emit = EventEmitter.prototype.emit;
 
     /**
      * Initialize the API manager
