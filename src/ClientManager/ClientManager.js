@@ -5,7 +5,7 @@ require('dotenv').config();
  */
 
 const { Logger } = require('../shared/Logger');
-const { Prefix } = require('./Prefix');
+const { Prefix } = require('../shared/Prefix');
 const Client = require('./Client');
 const { ClientIdentifier } = require('../shared/ClientIdentifier');
 
@@ -19,7 +19,7 @@ const MPH_MPPCLONE_TOKEN = process.env.MPH_MPPCLONE_TOKEN;
  * ANCHOR Module-level imports
  */
 
-const UsersetInitializationVector = require('./UsersetInitializationVector');
+const config = require('./config');
 
 /**
  * ANCHOR Module-level declarations
@@ -28,11 +28,17 @@ const UsersetInitializationVector = require('./UsersetInitializationVector');
 class ClientManager {
     static logger = new Logger('Clients', '\x1b[34m');
 
+    /**
+     * EventEmitter static methods
+     */
     static on = EventEmitter.prototype.on;
     static off = EventEmitter.prototype.off;
     static once = EventEmitter.prototype.once;
     static emit = EventEmitter.prototype.emit;
 
+    /**
+     * List of connections to MPP sites
+     */
     static clients = [];
 
     /**
@@ -59,7 +65,7 @@ class ClientManager {
     }
 
     static async initializeClients() {
-        let connections = require('./ConnectionList');
+        let connections = config.connectionList;
 
         for (let uri of Object.keys(connections)) {
             for (let ch of connections[uri]) {
@@ -67,7 +73,7 @@ class ClientManager {
 
                 client.start();
                 client.setChannel(ch._id);
-                client.currentUserset = UsersetInitializationVector;
+                client.currentUserset = config.usersetInitializationVector;
 
                 this.bindClientListeners(client, ch);
                 this.clients.push(client);
@@ -89,8 +95,10 @@ class ClientManager {
             if (!cl) return;
 
             if (msg.msg.out) {
-                msg.msg.out = msg.msg.out.match(/.{1,512}/);
-                this.sendBufferedChatMessage(cl, msg.msg.out);
+                let strs = msg.msg.out.match(/.{1,512}/g)
+                for (let str of strs) {
+                    this.sendBufferedChatMessage(cl, str);
+                }
             }
         });
 
@@ -136,7 +144,6 @@ class ClientManager {
         });
 
         cl.on('ch', msg => {
-
             cl.emit('send userset');
 
             if (!cl['usersetInterval']) {
@@ -147,9 +154,44 @@ class ClientManager {
         });
 
         cl.on('send userset', (set = cl.currentUserset) => {
+            let sets = [set, cl.getOwnParticipant()]
+            const keys = sets.reduce((k, o) => k.concat(Object.keys(o)), []);
+            const single = new Set(keys);
+
+            if (!sets.every(o => single.size === Object.keys(o).length)) return;
+
             cl.sendArray([{
                 m: 'userset', set
             }]);
+        });
+        
+        cl.on('custom', msg => {
+            this.emit('custom message', msg);
+        });
+
+        cl.on('n', msg => {
+            for (let m of msg.n) {
+                if (m['m']) {
+                    if (m.m == 'custom') {
+                        this.emit('custom message', m);
+                    }
+                }
+            }
+        });
+
+        cl.on('p', p => {
+            let stripped = {
+                name: p.name,
+                _id: p._id,
+                color: p.color,
+                t: Date.now()
+            }
+            
+            this.sendMessage({
+                m: 'user update',
+                msg: p,
+                p: stripped
+            });
         });
     }
 
@@ -205,31 +247,7 @@ class ClientManager {
     }
 
     static sendBufferedChatMessage(cl, message) {
-        if (!cl.chatBuffer) {
-            this.resetChatBuffer(cl);
-        }
-
-        cl.chatBuffer.push(message);
-    }
-
-    static resetChatBuffer(cl) {
-        cl.chatBuffer = [];
-
-        if (cl.chatBufferInterval) {
-            clearInterval(cl.chatBufferInterval);
-        }
-
-        cl.chatBufferInterval = setInterval(() => {
-            if (cl.chatBuffer.length > 0) {
-                for (let i = 0; i < cl.chatBuffer.length; i++) {
-                    const str = cl.chatBuffer[i];
-                    let time = i > 4 ? i * 2000 : i * 1000;
-                    setTimeout(() => {
-                        this.sendChatMessage(cl, cl.chatBuffer.splice(0, 1));
-                    }, time);
-                }
-            }
-        });
+        this.sendChatMessage(message);
     }
 
     static sendChatMessage(cl, message) {
